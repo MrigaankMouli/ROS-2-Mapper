@@ -247,6 +247,7 @@ private:
         map->header.frame_id = "map";
         map_pub_->publish(std::move(map));
     }
+}
 };
 
 int main(int argc, char** argv)
