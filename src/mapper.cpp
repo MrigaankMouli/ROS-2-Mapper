@@ -25,31 +25,13 @@ public:
     {
         RCLCPP_INFO(this->get_logger(), "Mapper Node Started.");
 
-        // Initialize subscriptions
-        cloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-            "/zed2i/zed_node/point_cloud/cloud_registered", 1, 
-            std::bind(&Mapper::pointCloudCallback, this, std::placeholders::_1));
+        initializeParameters();
+        initializeSubscriptions();
+        initializePublishers();
+        initializeTimer();
 
-        odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
-            "/odom", 1, std::bind(&Mapper::odomCallback, this, std::placeholders::_1));
-
-        // Initialize publisher
-        map_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/local_map", 1);
-
-        // Initialize timer
-        timer_ = this->create_wall_timer(
-            std::chrono::milliseconds(10), std::bind(&Mapper::UpdateFunction, this));
-
-        // Initialize grid and maps
-        grid.width = 1500;
-        grid.height = 1000;
-        grid.resolution = resolution;
-        grid.origin_x = -(grid.width/2)*grid.resolution;
-        grid.origin_y = -(grid.height/2)*grid.resolution;
-
-        log_odds_map.resize(grid.width * grid.height, L_PRIOR);
-        hit_count.resize(grid.width * grid.height, 0);
-        update_sum.resize(grid.width * grid.height, 0.0);
+        initializeGridAndMaps();
+    }
 
 private:
     struct BotPosition {
@@ -97,6 +79,40 @@ private:
     std::vector<double> log_odds_map;
     std::vector<int> hit_count;
     std::vector<double> update_sum;
+
+    void initializeParameters() {
+        // Initialize parameters here if needed
+    }
+
+    void initializeSubscriptions() {
+        cloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+            "/zed2i/zed_node/point_cloud/cloud_registered", 1, 
+            std::bind(&Mapper::pointCloudCallback, this, std::placeholders::_1));
+
+        odom_sub_ = this->create_subscription<nav_msgs::msg::Odometry>(
+            "/odom", 1, std::bind(&Mapper::odomCallback, this, std::placeholders::_1));
+    }
+
+    void initializePublishers() {
+        map_pub_ = this->create_publisher<nav_msgs::msg::OccupancyGrid>("/local_map", 1);
+    }
+
+    void initializeTimer() {
+        timer_ = this->create_wall_timer(
+            std::chrono::milliseconds(10), std::bind(&Mapper::UpdateFunction, this));
+    }
+
+    void initializeGridAndMaps() {
+        grid.width = 1500;
+        grid.height = 1000;
+        grid.resolution = resolution;
+        grid.origin_x = -(grid.width/2)*grid.resolution;
+        grid.origin_y = -(grid.height/2)*grid.resolution;
+
+        log_odds_map.resize(grid.width * grid.height, L_PRIOR);
+        hit_count.resize(grid.width * grid.height, 0);
+        update_sum.resize(grid.width * grid.height, 0.0);
+    }
 
     pcl::PointXYZ cloudPointToGlobalPoint(const pcl::PointXYZ& cloud_point, const BotPosition& bot_pos) {
         pcl::PointXYZ global_point;
@@ -186,6 +202,7 @@ private:
         updateOccupancyGrid();
         publishOccupancyGrid();
 
+        // Reset flags
         cloud_received = false;
         odom_received = false;
     }
@@ -247,7 +264,6 @@ private:
         map->header.frame_id = "map";
         map_pub_->publish(std::move(map));
     }
-}
 };
 
 int main(int argc, char** argv)
